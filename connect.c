@@ -8,7 +8,7 @@
 
 #include "tsserv.h"
 
-int connect_handler(int fd_s, int* fd_peers)
+int connect_handler(int fd_s, int* fd_peers, fd_set* master_w)
 {
 	struct sockaddr_storage peer_addr;
 	struct sockaddr_in* sa_in;
@@ -46,6 +46,7 @@ int connect_handler(int fd_s, int* fd_peers)
                    peer_host, peer_port);
 		}
 
+        FD_SET(new_socket, master_w);
 		fds_add(fd_peers, new_socket);
 	}
 
