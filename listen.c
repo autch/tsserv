@@ -59,7 +59,7 @@ int start_listen(char* host, char* port)
 
 	if(listen(fd_s, LISTEN_BACKLOG) == -1)
 	{
-		syslog(LOG_ERR, "Cannot listen: %s", strerror(errno));
+		syslog(LOG_ERR, "Cannot listen: %m");
 		close(fd_s);
 		return -3;
 	}

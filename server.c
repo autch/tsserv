@@ -1,75 +1,119 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <memory.h>
 #include <syslog.h>
 #include <sys/types.h>
-#include <sys/select.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
 #include "tsserv.h"
-
-int eval_nfds(int* fds);
 
 int server_main(int fd_s, int fd_pipe)
 {
-	fd_set master_r, master_w;		// always maintain this
-	int fd_peers[FD_SETSIZE];
-	fd_set readfds, writefds;		// used for pselect(2)
-	int nfds, ret, initial_nfds;
+	int nfds, ret;
+    int epoll_fd;
+    size_t max_events = 16;
+    int conns = 0;
+    struct epoll_event ev;
+    struct epoll_event* events = NULL;
 
-	memset(fd_peers, -1, sizeof fd_peers);
+    epoll_fd = epoll_create(10);
+    if(epoll_fd < -1)
+    {
+        syslog(LOG_ERR, "epoll_create(2) failed: %m");
+        return 1;
+    }
 
-	FD_ZERO(&master_r);
-	FD_SET(fd_s, &master_r);
-	FD_SET(fd_pipe, &master_r);
-	nfds = (fd_pipe > fd_s) ? fd_pipe : fd_s;
-	nfds++;
-    initial_nfds = nfds;
+    events = calloc(max_events, sizeof ev);
 
-    FD_ZERO(&master_w);
+    ev.events = EPOLLIN;
+    ev.data.fd = fd_s;
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd_s, &ev);
+    ev.data.fd = fd_pipe;
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd_pipe, &ev);
 
 	for(;;)
 	{
-		readfds = master_r;
-        writefds = master_w;
-		ret = pselect(nfds, &readfds, &writefds, NULL, NULL, NULL);
-		if(ret < 0)
-		{
-			syslog(LOG_ERR, "pselect(2) failed: %s", strerror(errno));
-			return 1;
-		}
-		if(ret > 0)
-		{
-			if(FD_ISSET(fd_s, &readfds))
-			{
-				if(connect_handler(fd_s, fd_peers, &master_w) < 0)
+        nfds = epoll_pwait(epoll_fd, events, max_events, 20, NULL);
+        if(nfds < 0)
+        {
+			syslog(LOG_ERR, "epoll_wait failed: %m");
+            break;
+        }
+
+        int i;
+        for(i = 0; i < nfds; i++)
+        {
+            if(events[i].data.fd == fd_s)
+            {
+				if(connect_handler(epoll_fd, fd_s) < 0)
 					break;
-			}
-			if(FD_ISSET(fd_pipe, &readfds))
-			{
-				if(transfer_handler(fd_pipe, fd_peers, &master_w, &writefds) < 0)
-					break;
-			}
-		}
-        nfds = eval_nfds(fd_peers);
-        if(initial_nfds > nfds) nfds = initial_nfds;
+                conns++;
+                if(conns == max_events)
+                {
+                    max_events += 4;
+                    events = realloc(events, max_events * sizeof ev);
+                }
+            }
+            if(events[i].data.fd == fd_pipe)
+            {
+                uint8_t buffer[BUFFER_SIZE];
+                ssize_t bytes_read, bytes_sent;
+
+                bytes_read = read(fd_pipe, buffer, sizeof buffer);
+                if(bytes_read < 0)
+                {
+                    syslog(LOG_ERR, "Cannot read(2) from stdin: %m");
+                    break;
+                }
+                if(bytes_read == 0)
+                {
+                    syslog(LOG_INFO, "EOF from stdin");
+                    break;
+                }
+                
+                int j;
+                for(j = 0; j < nfds; j++)
+                {
+                    int fd = events[j].data.fd;
+                    if(fd == fd_s) continue;
+                    if(fd == fd_pipe) continue;
+
+                    bytes_sent = send(fd, buffer, bytes_read, MSG_NOSIGNAL | MSG_DONTWAIT);
+                    if(bytes_sent < 0)
+                    {
+                        switch(errno)
+                        {
+                        case EAGAIN:
+                            break;
+                        case EPIPE:
+                        case ECONNRESET:
+                            syslog(LOG_INFO, "Connection closed by peer %d", fd);
+                            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+                            shutdown(fd, SHUT_RDWR);
+                            close(fd);
+                            conns--;
+                            ret = 1;
+                            break;
+                        default:
+                            syslog(LOG_WARNING, "Cannot send(2) to %d - closing: %m", fd);
+                            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+                            shutdown(fd, SHUT_RDWR);
+                            close(fd);
+                            conns--;
+                            ret = 2;
+                        }
+                        
+                    }
+                }
+
+            }
+        }
 	}
+
+    close(epoll_fd);
 
 	return 0;
-}
-
-int eval_nfds(int* fds)
-{
-	int* p = fds;
-	int* pe = fds + FD_SETSIZE;
-    int max = -1;
-
-	for(; p != pe; p++)
-	{
-        if(*p == -1) continue;
-
-        if(*p > max) max = *p;
-	}
-	
-	return max + 1;
 }

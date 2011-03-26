@@ -18,7 +18,7 @@ int fork_child(int pipefd[2], char** av_cmd, char* log_filename)
 
 	close(pipefd[0]);
 	if(dup2(pipefd[1], STDOUT_FILENO) != STDOUT_FILENO)
-		syslog(LOG_ERR, "child: dup2(2) failed: %s", strerror(errno));
+		syslog(LOG_ERR, "child: dup2(2) failed: %m");
 	close(pipefd[1]);
 
 	if(log_filename)
@@ -26,7 +26,7 @@ int fork_child(int pipefd[2], char** av_cmd, char* log_filename)
 		fd_null_w = open(log_filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
 		if(fd_null_w >= 0)
 		{
-			syslog(LOG_ERR, "child: Cannot open stderr log: %s: %s", log_filename, strerror(errno));
+			syslog(LOG_ERR, "child: Cannot open stderr log: %s: %m", log_filename);
 			fd_null_w = open("/dev/null", O_WRONLY);
 		}
 		else
@@ -43,7 +43,7 @@ int fork_child(int pipefd[2], char** av_cmd, char* log_filename)
 				fflush(logfile);
 			}
 			else
-				syslog(LOG_ERR, "child: Cannot fdopen for stderr log: %s", strerror(errno));
+				syslog(LOG_ERR, "child: Cannot fdopen for stderr log: %m");
 		}
 		// logfile is assoc'ed w/ fd_null_w, don't have to close both
 	}
@@ -56,7 +56,7 @@ int fork_child(int pipefd[2], char** av_cmd, char* log_filename)
 		
 	execvp(*av_cmd, av_cmd);
 
-	syslog(LOG_ERR, "child: Cannot exec: %s", strerror(errno));
+	syslog(LOG_ERR, "child: Cannot exec %s: %m", *av_cmd);
 
 	closelog();
 

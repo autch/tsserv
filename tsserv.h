@@ -20,11 +20,7 @@ struct tsserv_context
 int start_listen(char* host, char* port);
 int server_main(int fd_s, int fd_pipe);
 
-int connect_handler(int fd_s, int* fd_peers, fd_set* master_w);
-int transfer_handler(int fd_pipe, int* fd_peers, fd_set* master_w, fd_set* writefds);
-
-int fds_add(int* fd_peers, int fd);
-int fds_del(int* fd_peers, int fd);
+int connect_handler(int epoll_fd, int fd_s);
 
 int fork_child(int pipefd[2], char** av_cmd, char* logfile);
 int fork_parent(int pipefd[2], char* host, char* port, pid_t pid);
