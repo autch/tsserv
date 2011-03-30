@@ -1,4 +1,17 @@
 *.o
-Makefile.dep
 tsserv
+.cproject
+.project
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache
+config.h
+config.log
+config.status
+configure
+config.h.in
+depcomp
+install-sh
+missing
 

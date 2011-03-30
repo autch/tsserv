@@ -2,6 +2,10 @@
 #ifndef tsserv_h
 #define tsserv_h
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <unistd.h>
 
 #define DEFAULT_HOST NULL
