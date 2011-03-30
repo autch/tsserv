@@ -11,7 +11,7 @@
 
 static const struct option long_options[] =
 {
-    { "debug",0, NULL, 'd' },
+	{ "debug",0, NULL, 'd' },
 	{ "host", 1, NULL, 'h' },
 	{ "port", 1, NULL, 'p' },
 	{ "err",  1, NULL, 'e' },
@@ -26,13 +26,12 @@ int usage(int ac, char** av)
 		   "  %-20s	 %s\n"
 		   "  %-20s	 %s\n"
 		   "  %-20s	 %s\n\n",
-           "-d, --debug",     "Debug; Do not daemonize",
+		   "-d, --debug",	  "Debug; Do not daemonize",
 		   "-h, --host=HOST", "Local address to listen (default: 0.0.0.0)",
 		   "-p, --port=PORT", "Local port to listen (default: " DEFAULT_PORT ")",
 		   "-e, --err=LOGFILE", "Log stderr to LOGFILE (default: /dev/null)");
 	return -1;
 }
-
 
 int main(int ac, char** av)
 {
@@ -41,7 +40,7 @@ int main(int ac, char** av)
 	int optchar, option_index = 0;
 	char** av_cmd = NULL;
 	struct tsserv_context context = { DEFAULT_HOST, DEFAULT_PORT, NULL };
-    int debug = 0;
+	int debug = 0;
 
 	for(;;)
 	{
@@ -67,23 +66,23 @@ int main(int ac, char** av)
 	
 	av_cmd = av + optind;
 
-    if(debug == 0)
-    {
-        pid = fork();
-        if(pid == -1)
-        {
-            perror("fork (1st)");
-            return 2;
-        }
-        else if(pid != 0)
-            return 0;
-        
-        if(setsid() == (pid_t)-1)
-        {
-            perror("setsid");
-            return 3;
-        }
-    }
+	if(debug == 0)
+	{
+		pid = fork();
+		if(pid == -1)
+		{
+			perror("fork (1st)");
+			return 2;
+		}
+		else if(pid != 0)
+			return 0;
+		
+		if(setsid() == (pid_t)-1)
+		{
+			perror("setsid");
+			return 3;
+		}
+	}
 
 	if(pipe(pipefd) == -1)
 	{
