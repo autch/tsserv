@@ -7,6 +7,10 @@
 #endif
 
 #include <unistd.h>
+#include <event2/event.h>
+#include <event2/listener.h>
+#include <event2/bufferevent.h>
+#include "stdlist.h"
 
 #define DEFAULT_HOST NULL
 #define DEFAULT_PORT "11234"
@@ -21,10 +25,34 @@ struct tsserv_context
   char* stderr_log;
 };
 
-int start_listen(char* host, char* port);
+struct tssparent_client
+{
+	struct bufferevent* bev;
+	DEFINE_STDLIST_MEMBERS(struct tssparent_client)
+};
+
+DECLARE_STDLIST(struct tssparent_client, tsclient)
+
+struct tssparent_context
+{
+	pid_t pid;
+
+	struct event_base* ev_base;
+	struct evconnlistener* listener;
+	struct event* evsignal_sigint;
+	struct event* evsignal_sigterm;
+	struct event* evsignal_sigchld;
+
+	struct bufferevent* pipe;
+
+	struct tssparent_client* clients;
+};
+
+int start_listen(struct tssparent_context* ctx, char* host, char* port);
 int server_main(int fd_s, int fd_pipe);
 
-int connect_handler(int epoll_fd, int fd_s);
+void connect_handler(struct evconnlistener* listener, evutil_socket_t sd,
+					 struct sockaddr* peer, int socklen, void* user);
 
 int fork_child(int pipefd[2], char** av_cmd, char* logfile);
 int fork_parent(int pipefd[2], char* host, char* port, pid_t pid);

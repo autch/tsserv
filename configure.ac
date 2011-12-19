@@ -28,6 +28,8 @@ AC_FUNC_FORK
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([dup2 memset socket])
 
+PKG_CHECK_MODULES(libevent, libevent > 2.0.4)
+
 AC_CONFIG_FILES([Makefile
                  src/Makefile])
 AC_OUTPUT

@@ -10,15 +10,14 @@
 
 #include "tsserv.h"
 
-int start_listen(char* host, char* port)
+int start_listen(struct tssparent_context* ctx, char* host, char* port)
 {
 	struct addrinfo hints;
 	struct addrinfo* result;
 	struct addrinfo* rp;
 	struct sockaddr_in* sa_in;
 	struct sockaddr_in6* sa_in6;
-	const int true = 1;
-	int fd_s = -1, s = -1;
+	int s = -1;
 	char listen_host[INET6_ADDRSTRLEN];
 	u_int16_t listen_port = 0;
 
@@ -26,10 +25,6 @@ int start_listen(char* host, char* port)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
-	hints.ai_protocol = 0;
-	hints.ai_canonname = NULL;
-	hints.ai_addr = NULL;
-	hints.ai_next = NULL;
 
 	s = getaddrinfo(host, port, &hints, &result);
 	if(s)
@@ -40,28 +35,16 @@ int start_listen(char* host, char* port)
 
 	for(rp = result; rp; rp = rp->ai_next)
 	{
-		fd_s = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-		if(fd_s == -1)
-			continue;
-		setsockopt(fd_s, SOL_SOCKET, SO_REUSEADDR, &true, sizeof true);
-		if(bind(fd_s, rp->ai_addr, rp->ai_addrlen) == 0)
-			break; // okay
-
-		close(fd_s);
+		ctx->listener = evconnlistener_new_bind(ctx->ev_base, connect_handler, ctx,
+												LEV_OPT_CLOSE_ON_EXEC | LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
+												-1, rp->ai_addr, rp->ai_addrlen);
+		if(ctx->listener != NULL) break;
 	}
 
-	if(!rp)
+	if(rp == NULL || ctx->listener == NULL)
 	{
 		syslog(LOG_ERR, "Cannot find any bind(2)able host:port pair");
-		close(fd_s);
 		return -2;
-	}
-
-	if(listen(fd_s, LISTEN_BACKLOG) == -1)
-	{
-		syslog(LOG_ERR, "Cannot listen: %m");
-		close(fd_s);
-		return -3;
 	}
 
 	if(rp->ai_family == AF_INET)
@@ -83,5 +66,5 @@ int start_listen(char* host, char* port)
 
 	freeaddrinfo(result);
 
-	return fd_s;
+	return 0;
 }
