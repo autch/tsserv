@@ -65,7 +65,7 @@ int fork_parent(int pipefd[2], char* host, char* port, pid_t pid)
 
 	ctx->pipe = bufferevent_socket_new(ctx->ev_base, pipefd[0], BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
 	bufferevent_setcb(ctx->pipe, pipecb_read, NULL, pipecb_event, ctx);
-	bufferevent_setwatermark(ctx->pipe, EV_READ, BUFFER_SIZE, BUFFER_SIZE * LISTEN_BACKLOG);
+	bufferevent_setwatermark(ctx->pipe, EV_READ, 1024, 0);
 	bufferevent_enable(ctx->pipe, EV_READ);
 
 	event_base_dispatch(ctx->ev_base);
