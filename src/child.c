@@ -1,12 +1,8 @@
 
-#include <errno.h>
-#include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <syslog.h>
-
-#include "tsserv.h"
 
 int fork_child(int pipefd[2], char** av_cmd, char* log_filename)
 {

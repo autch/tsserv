@@ -10,10 +10,6 @@
 
 #include "tsserv.h"
 
-int terminate = 0;
-
-void sa_terminate(int sig);
-
 static void pipecb_read(struct bufferevent* bev, void* user);
 static void pipecb_event(struct bufferevent* bev, short what, void* user);
 static void parent_free(struct tssparent_context* ctx);
@@ -101,11 +97,6 @@ int fork_parent(int pipefd[2], char* host, char* port, pid_t pid)
 	return 0;
 }
 
-void sa_terminate(int sig)
-{
-    terminate = 1;
-}
-
 static void
 parent_free(struct tssparent_context* ctx)
 {
@@ -144,19 +135,18 @@ pipecb_read(struct bufferevent* bev, void* user)
 	struct tssparent_context* ctx = user;
 	char buffer[BUFFER_SIZE];
 	size_t bytes_read;
-	struct tssparent_client* client;
+	tsclient* client;
 	int ret;
 
 	bytes_read = bufferevent_read(ctx->pipe, buffer, sizeof buffer);
 
-	STDLIST_FOREACH(ctx->clients, client)
+	for(client = ctx->clients; client; client = client->next)
 	{
 		// TODO: make this zerocopy
 		ret = bufferevent_write(client->bev, buffer, bytes_read);
 		if(ret != 0 && errno == EPIPE)
 		{
-			ctx->clients = tsclientRemove(ctx->clients, client);
-			tsclientFree(client);
+			ctx->clients = tsclientDelete(ctx->clients, client);
 			return;
 		}
 	}
@@ -176,5 +166,4 @@ pipecb_event(struct bufferevent* bev, short what, void* user)
 	{
 		event_base_loopbreak(ctx->ev_base);
 	}
-
 }

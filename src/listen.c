@@ -1,6 +1,4 @@
 
-#include <errno.h>
-#include <unistd.h>
 #include <memory.h>
 #include <syslog.h>
 #include <netdb.h>

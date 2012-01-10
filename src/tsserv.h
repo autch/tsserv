@@ -10,11 +10,10 @@
 #include <event2/event.h>
 #include <event2/listener.h>
 #include <event2/bufferevent.h>
-#include "stdlist.h"
 
 #define DEFAULT_HOST NULL
 #define DEFAULT_PORT "11234"
-#define DEFAULT_LOGFILE "/tmp/tsserv.stderr.log"
+#define DEFAULT_LOGFILE "tsserv.stderr.log"
 #define BUFFER_SIZE 4096
 #define LISTEN_BACKLOG 20
 
@@ -28,10 +27,16 @@ struct tsserv_context
 struct tssparent_client
 {
 	struct bufferevent* bev;
-	DEFINE_STDLIST_MEMBERS(struct tssparent_client)
+	struct tssparent_client* next;
 };
 
-DECLARE_STDLIST(struct tssparent_client, tsclient)
+typedef struct tssparent_client tsclient;
+
+tsclient* tsclientNew();
+void tsclientFree(tsclient* top);
+tsclient* tsclientPrepend(tsclient* head, tsclient* node);
+tsclient* tsclientFindByBEV(tsclient* head, struct bufferevent* bev);
+tsclient* tsclientDelete(tsclient* top, tsclient* to_remove);
 
 struct tssparent_context
 {
@@ -45,7 +50,7 @@ struct tssparent_context
 
 	struct bufferevent* pipe;
 
-	struct tssparent_client* clients;
+	tsclient* clients;
 };
 
 int start_listen(struct tssparent_context* ctx, char* host, char* port);

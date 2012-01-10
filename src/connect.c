@@ -1,16 +1,12 @@
 
-#include <errno.h>
-#include <string.h>
 #include <syslog.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
-#include <sys/epoll.h>
 
 #include "tsserv.h"
 
 static void tsclientcb_event(struct bufferevent* bev, short what, void* user);
-int tsclientSelectByBEV(struct tssparent_client* p, void* arg);
 
 void connect_handler(struct evconnlistener* listener, evutil_socket_t sd,
 					 struct sockaddr* peer, int socklen, void* user)
@@ -62,18 +58,9 @@ tsclientcb_event(struct bufferevent* bev, short what, void* user)
 	struct tssparent_context* ctx = user;
 	struct tssparent_client* client;
 
-	client = tsclientPick(ctx->clients, tsclientSelectByBEV, bev);
+	client = tsclientFindByBEV(ctx->clients, bev);
 	if(client == NULL) return;
 
 	if((what & BEV_EVENT_ERROR) || (what & BEV_EVENT_EOF))
-	{
-		ctx->clients = tsclientRemove(ctx->clients, client);
-		tsclientFree(client);
-	}
-}
-
-int tsclientSelectByBEV(struct tssparent_client* p, void* arg)
-{
-	struct bufferevent* bev = arg;
-	return p->bev == bev;
+		ctx->clients = tsclientDelete(ctx->clients, client);
 }
