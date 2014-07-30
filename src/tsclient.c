@@ -8,6 +8,10 @@ void tsclientDestroy(tsclient* p)
 {
 	if(p->bev != NULL)
 		bufferevent_free(p->bev);
+
+// evhttp_request is managed by evhttp 
+//	if(p->req != NULL)
+//		evhttp_request_free(p->req);
 }
 
 tsclient* tsclientNew()
@@ -34,7 +38,6 @@ tsclient* tsclientFindByBEV(tsclient* head, struct bufferevent* bev)
 	return NULL;
 }
 
-
 tsclient* tsclientPick(tsclient* head, int (*proc)(tsclient*, void*), void* user)
 {
 	tsclient* p;
@@ -49,8 +52,7 @@ tsclient* tsclientPrepend(tsclient* head, tsclient* node)
 {
 	if(NEXT(node) == NULL)
 		NEXT(node) = head;
-	else
-	{
+	else {
 		tsclient* tail;
 		tail = tsclientFindTail(node);
 		NEXT(tail) = head;
@@ -63,8 +65,7 @@ void tsclientFree(tsclient* top)
 	tsclient* p = top;
 	tsclient* q;
 
-	while(p)
-	{
+	while(p) {
 		q = NEXT(p);
 		tsclientDestroy(p);
 		free(p);
@@ -78,26 +79,22 @@ tsclient* tsclientDelete(tsclient* top, tsclient* to_remove)
 	tsclient* p = top;
 	tsclient* q;
 
-	if(top == to_remove)
-	{
+	if(top == to_remove) {
 		q = NEXT(top);
 		NEXT(top) = NULL;
 		tsclientFree(top);
 		return q;
 	}
 
-	while(p)
-	{
+	while(p) {
 		q = NEXT(p);
 
-		if(q == to_remove)
-		{
+		if(q == to_remove){
 			NEXT(p) = NEXT(q);
 			NEXT(q) = NULL;
 			tsclientFree(q);
 			p = NEXT(p);
-		}
-		else
+		} else
 			p = q;
 	}
 
@@ -109,24 +106,20 @@ tsclient* tsclientRemove(tsclient* top, tsclient* to_remove)
 	tsclient* p = top;
 	tsclient* q;
 
-	if(top == to_remove)
-	{
+	if(top == to_remove) {
 		q = NEXT(top);
 		NEXT(top) = NULL;
 		return q;
 	}
 
-	while(p)
-	{
+	while(p) {
 		q = NEXT(p);
 
-		if(q == to_remove)
-		{
+		if(q == to_remove) {
 			NEXT(p) = NEXT(q);
 			NEXT(q) = NULL;
 			p = NEXT(p);
-		}
-		else
+		} else
 			p = q;
 	}
 
